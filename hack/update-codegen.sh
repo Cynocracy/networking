@@ -18,14 +18,6 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-export GO111MODULE=on
-# If we run with -mod=vendor here, then generate-groups.sh looks for vendor files in the wrong place.
-export GOFLAGS=-mod=
-
-if [ -z "${GOPATH:-}" ]; then
-  export GOPATH=$(go env GOPATH)
-fi
-
 source $(dirname $0)/../vendor/knative.dev/test-infra/scripts/library.sh
 
 CODEGEN_PKG=${CODEGEN_PKG:-$(cd ${REPO_ROOT_DIR}; ls -d -1 $(dirname $0)/../vendor/k8s.io/code-generator 2>/dev/null || echo ../code-generator)}
@@ -42,23 +34,27 @@ chmod +x ${KNATIVE_CODEGEN_PKG}/hack/generate-knative.sh
 ${CODEGEN_PKG}/generate-groups.sh "deepcopy,client,informer,lister" \
   knative.dev/networking/pkg/client knative.dev/networking/pkg/apis \
   "networking:v1alpha1" \
+  --output-base ${REPO_ROOT_DIR} \
   --go-header-file ${REPO_ROOT_DIR}/hack/boilerplate/boilerplate.go.txt
 
 # Knative Injection
 ${KNATIVE_CODEGEN_PKG}/hack/generate-knative.sh "injection" \
   knative.dev/networking/pkg/client knative.dev/networking/pkg/apis \
   "networking:v1alpha1" \
+  --output-base ${REPO_ROOT_DIR} \
   --go-header-file ${REPO_ROOT_DIR}/hack/boilerplate/boilerplate.go.txt
 
 # Generate our own client for istio (otherwise injection won't work)
 ${CODEGEN_PKG}/generate-groups.sh "client,informer,lister" \
   knative.dev/networking/pkg/client/istio istio.io/client-go/pkg/apis \
   "networking:v1alpha3" \
+  --output-base ${REPO_ROOT_DIR} \
   --go-header-file ${REPO_ROOT_DIR}/hack/boilerplate/boilerplate.go.txt
 
 # Depends on generate-groups.sh to install bin/deepcopy-gen
 ${GOPATH}/bin/deepcopy-gen \
   -O zz_generated.deepcopy \
+  --output-base ${REPO_ROOT_DIR} \
   --go-header-file ${REPO_ROOT_DIR}/hack/boilerplate/boilerplate.go.txt \
   -i knative.dev/networking/pkg/apis/config
 
